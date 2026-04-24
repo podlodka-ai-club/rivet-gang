@@ -7,8 +7,8 @@ owner: unassigned
 updatedAt: 2026-04-23T00:00:00Z
 pr: null
 sourceDocuments:
-  - /Users/aifedorov/rivet-gang/PRD.md
-  - /Users/aifedorov/rivet-gang/ARCHITECTURE.md
+  - PRD.md
+  - ARCHITECTURE.md
 ---
 
 # Execution Plan

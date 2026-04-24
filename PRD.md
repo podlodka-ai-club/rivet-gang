@@ -228,9 +228,9 @@ Built-in defaults cover:
 4. Write `research.md` and `plan.md`.
 5. Run a decision gate with one of these outcomes:
    - `proceed`
-   - `needs_clarification`
-   - `refuse_too_large`
-   - `refuse_unsafe`
+   - `needsClarification`
+   - `refuseTooLarge`
+   - `refuseUnsafe`
    - `blocked`
 6. If clarification is needed, add 1-3 concrete questions in one task comment and return the task to `To Do`.
 7. Otherwise create a task-specific branch.
@@ -244,9 +244,9 @@ Built-in defaults cover:
 ### Decision Gate Rules
 
 - `proceed`: acceptance criteria are explicit or safely inferable, the task fits the Small Diff Rubric, required integrations work, and no policy rule is violated
-- `needs_clarification`: expected behavior, scope, edge cases, or test expectations are unclear
-- `refuse_too_large`: estimated scope fails the Small Diff Rubric before implementation
-- `refuse_unsafe`: forbidden paths, high-risk areas, secrets, privileged credentials, or disallowed command patterns are required
+- `needsClarification`: expected behavior, scope, edge cases, or test expectations are unclear
+- `refuseTooLarge`: estimated scope fails the Small Diff Rubric before implementation
+- `refuseUnsafe`: forbidden paths, high-risk areas, secrets, privileged credentials, or disallowed command patterns are required
 - `blocked`: tracker, VCS, LLM, git state, configuration, or validation environment is not usable
 
 ### Clarification and Resume Rules
