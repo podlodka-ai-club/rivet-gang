@@ -23,11 +23,11 @@ This document provides the complete epic and story breakdown for rivet-gang, dec
 
 ### Functional Requirements
 
-FR-001: Operators can initialize a project workspace by running `agent init`, which creates the runtime folders, configuration template, and instruction template required to start a project.
+FR-001: Operators can initialize a project workspace by running `rg init`, which creates the runtime folders, configuration template, and instruction template required to start a project.
 
-FR-002: Operators can verify execution readiness by running `agent doctor`, which checks repository access, integrations, authentication, and required local commands and reports pass or fail for each check.
+FR-002: Operators can verify execution readiness by running `rg doctor`, which checks repository access, integrations, authentication, and required local commands and reports pass or fail for each check.
 
-FR-003: Operators can run `agent run` in supervisor mode for sequential task processing or in single-task mode for one specified task.
+FR-003: Operators can run `rg run` in supervisor mode for sequential task processing or in single-task mode for one specified task.
 
 FR-004: Supervisor mode processes at most one eligible task at a time and does not start concurrent workers.
 
@@ -82,6 +82,7 @@ NFR-008: At least 50 percent of failed-check tasks shall converge within the con
 ### Additional Requirements
 
 - The full architecture record specifies `oclif` as the CLI starter; implementation should establish the TypeScript, Node.js, and `oclif` CLI foundation directly.
+- The CLI app name must be `rg`; first-class commands use the `rg` binary, including `rg init`, `rg doctor`, and `rg run`.
 - The first implementation slice must set up Linear as the MVP task tracker integration for checking eligible issues, updating issue status, and adding task comments.
 - Linear task intake must select eligible work from Linear issues carrying the `ai-agent` label.
 - The system must remain a local-first, single-process TypeScript CLI with filesystem-backed state under `.ai-agent/`.
@@ -106,11 +107,11 @@ NFR-008: At least 50 percent of failed-check tasks shall converge within the con
 
 ### UX Design Requirements
 
-UX-DR1: The CLI must expose a clear command structure for `agent init`, `agent doctor`, and `agent run` so operators can discover and run the main workflows without a web UI.
+UX-DR1: The CLI must expose a clear `rg` command structure for `rg init`, `rg doctor`, and `rg run` so operators can discover and run the main workflows without a web UI.
 
-UX-DR2: `agent doctor` output must be scannable in a terminal, showing pass or fail for repository access, integrations, authentication, and required local commands.
+UX-DR2: `rg doctor` output must be scannable in a terminal, showing pass or fail for repository access, integrations, authentication, and required local commands.
 
-UX-DR3: `agent run` output must communicate the current task, decision outcome, validation status, retry count, branch name, PR/MR link when available, and last error without requiring raw provider logs.
+UX-DR3: `rg run` output must communicate the current task, decision outcome, validation status, retry count, branch name, PR/MR link when available, and last error without requiring raw provider logs.
 
 UX-DR4: Clarification questions posted back to the task tracker must be concise, concrete, grouped in a single comment, and limited to 1-3 questions so task owners can respond quickly.
 
@@ -216,11 +217,11 @@ As an operator, I want the CLI project foundation and Linear tracker integration
 
 **Scope:**
 
-- Initialize the TypeScript `oclif` CLI foundation with `agent init`, `agent doctor`, and `agent run` command entrypoints.
+- Initialize the TypeScript `oclif` CLI foundation with `rg init`, `rg doctor`, and `rg run` command entrypoints.
 - Add configuration fields for the MVP Linear tracker provider, including status names, required Linear auth environment variable names, and default eligibility label `ai-agent`.
 - Define a tracker adapter interface in the adapter boundary for issue lookup, eligibility filtering, status updates, and comment creation.
 - Implement the initial Linear adapter behind that interface.
-- Make `agent doctor` verify Linear configuration and authentication without exposing secret values.
+- Make `rg doctor` verify Linear configuration and authentication without exposing secret values.
 - Ensure repository instructions from `AGENTS.md` are read before planning or task execution.
 - Add safe, deterministic comment marker handling for agent-created Linear comments.
 
@@ -233,19 +234,19 @@ As an operator, I want the CLI project foundation and Linear tracker integration
 
 **Acceptance Criteria:**
 
-1. Given a fresh repository, when an operator runs `agent init`, then the CLI creates the expected `.ai-agent/` runtime folders and a configuration template that includes Linear tracker settings.
-2. Given missing Linear authentication configuration, when an operator runs `agent doctor`, then the command reports Linear authentication as failed without printing secret values.
-3. Given valid Linear authentication configuration, when an operator runs `agent doctor`, then the command verifies Linear access and reports the tracker check as passed.
+1. Given a fresh repository, when an operator runs `rg init`, then the CLI creates the expected `.ai-agent/` runtime folders and a configuration template that includes Linear tracker settings.
+2. Given missing Linear authentication configuration, when an operator runs `rg doctor`, then the command reports Linear authentication as failed without printing secret values.
+3. Given valid Linear authentication configuration, when an operator runs `rg doctor`, then the command verifies Linear access and reports the tracker check as passed.
 4. Given configured Linear statuses and the `ai-agent` eligibility label, when the tracker adapter checks issues, then it returns only Linear issues matching the configured automation rules and carrying the `ai-agent` label.
 5. Given a target Linear issue and a configured status, when the tracker adapter updates status, then the issue is moved through the adapter interface without provider-specific payloads leaking into core logic.
 6. Given a target Linear issue and comment body, when the tracker adapter adds a comment, then it writes one agent-marked comment suitable for later deduplication.
-7. Given any Linear API or authentication failure, when the CLI reports the result, then it normalizes the failure into a typed integration error that can be surfaced by `agent doctor` or later workflow code.
+7. Given any Linear API or authentication failure, when the CLI reports the result, then it normalizes the failure into a typed integration error that can be surfaced by `rg doctor` or later workflow code.
 8. Given repository instructions exist in `AGENTS.md`, when the CLI prepares for task analysis, then those instructions are loaded before planning or code changes.
 
 **Validation Notes:**
 
 - Add focused tests for Linear adapter normalization using fixtures, without requiring live Linear calls.
-- Add command tests for `agent init` and `agent doctor` behavior around missing and present Linear configuration.
+- Add command tests for `rg init` and `rg doctor` behavior around missing and present Linear configuration.
 - Verify no Linear token or secret value is written to logs, stdout, stderr, artifacts, or test snapshots.
 
 ### Story 1.2: Runtime Configuration and Repository Instructions
@@ -266,7 +267,7 @@ So that every run uses the same local rules, credentials references, and safety 
 **And** it records whether repository instructions were loaded successfully.
 
 **Given** no `.ai-agent/config.yaml` exists
-**When** an operator runs `agent init`
+**When** an operator runs `rg init`
 **Then** the command creates `.ai-agent/config.yaml` from a template
 **And** the template includes tracker, VCS, LLM, validation, secret-scan, branch prefix, status, eligibility label, kill-switch, and limit settings.
 
@@ -276,14 +277,14 @@ So that every run uses the same local rules, credentials references, and safety 
 **And** secret values are not persisted to JSON, Markdown, logs, stdout, or stderr.
 
 **Given** required runtime directories are missing
-**When** an operator runs `agent init`
+**When** an operator runs `rg init`
 **Then** the command creates `.ai-agent/state/`, `.ai-agent/tasks/`, `.ai-agent/logs/`, and `.ai-agent/locks/`
 **And** the command can be rerun without deleting existing runtime state.
 
 ### Story 1.3: Readiness Doctor for Local Execution
 
 As an operator,
-I want `agent doctor` to report local execution readiness,
+I want `rg doctor` to report local execution readiness,
 So that integration, repository, and command problems are visible before task automation starts.
 
 **FRs covered:** FR-002
@@ -293,21 +294,21 @@ So that integration, repository, and command problems are visible before task au
 **Acceptance Criteria:**
 
 **Given** a configured repository
-**When** an operator runs `agent doctor`
+**When** an operator runs `rg doctor`
 **Then** the command reports pass or fail for repository access, Linear authentication, VCS configuration, LLM configuration, and configured local commands.
 
 **Given** one readiness check fails
-**When** `agent doctor` completes
+**When** `rg doctor` completes
 **Then** the command exits with a non-zero status
 **And** its terminal output identifies the failing check without requiring raw provider logs.
 
 **Given** all readiness checks pass
-**When** `agent doctor` completes
+**When** `rg doctor` completes
 **Then** the command exits successfully
 **And** the output is scannable in a terminal with one result per check.
 
 **Given** a configured command is not allowlisted
-**When** `agent doctor` evaluates configured commands
+**When** `rg doctor` evaluates configured commands
 **Then** it reports the command as unsafe or unavailable
 **And** it does not execute task text as shell input.
 
@@ -320,7 +321,7 @@ Linear epic: RIV-6
 ### Story 2.1: Run Modes and Sequential Supervisor
 
 As an operator,
-I want `agent run` to support single-task and supervisor modes,
+I want `rg run` to support single-task and supervisor modes,
 So that I can run one selected Linear issue or let the agent process eligible work sequentially.
 
 **FRs covered:** FR-003, FR-004
@@ -330,7 +331,7 @@ So that I can run one selected Linear issue or let the agent process eligible wo
 **Acceptance Criteria:**
 
 **Given** an operator provides a specific task identifier
-**When** `agent run` starts in single-task mode
+**When** `rg run` starts in single-task mode
 **Then** it attempts to process only that Linear issue
 **And** it does not poll for additional work.
 
@@ -364,7 +365,7 @@ So that unsupported or unapproved work is never processed accidentally.
 **Then** it selects only issues in the configured eligible status.
 
 **Given** no Linear issue matches both the configured status and `ai-agent` label
-**When** `agent run` executes
+**When** `rg run` executes
 **Then** it reports that no eligible task was found
 **And** it does not update issue status or add comments.
 
@@ -410,7 +411,7 @@ So that every task either proceeds safely or stops with a clear reason.
 **And** no code-editing workflow starts.
 
 **Given** the kill switch is enabled
-**When** `agent run` starts
+**When** `rg run` starts
 **Then** the agent stops before new task pickup or automatic resume
 **And** reports the kill-switch state.
 

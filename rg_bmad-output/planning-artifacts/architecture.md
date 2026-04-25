@@ -419,9 +419,9 @@ rivet-agent/
 ### Requirements to Structure Mapping
 
 **Feature/Requirement Mapping:**
-- `agent init` → `src/commands/init.ts`, `src/config/`, `src/state/path-layout.ts`
-- `agent doctor` → `src/commands/doctor.ts`, `src/adapters/`, `src/config/env.ts`
-- `agent run` → `src/commands/run.ts`, `src/core/coordinator.ts`
+- `rg init` → `src/commands/init.ts`, `src/config/`, `src/state/path-layout.ts`
+- `rg doctor` → `src/commands/doctor.ts`, `src/adapters/`, `src/config/env.ts`
+- `rg run` → `src/commands/run.ts`, `src/core/coordinator.ts`
 - Decision gate → `src/core/decision-gate.ts`
 - Clarification flow → `src/core/clarification.ts`, `src/adapters/tracker-adapter.ts`
 - Branch handling → `src/core/branch-manager.ts`, `src/adapters/vcs-adapter.ts`

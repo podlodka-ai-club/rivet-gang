@@ -54,7 +54,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Keep command files thin: parse CLI input, load config, call core services, and map final workflow status to exit behavior.
 - Do not put workflow orchestration, provider-specific logic, policy checks, or artifact-shape decisions directly inside `src/commands/`.
 - Put workflow orchestration in `src/core/`, provider integrations in `src/adapters/`, policy checks in `src/policy/`, persistence in `src/state/`, config loading in `src/config/`, shared contracts in `src/types/`, and focused helpers in `src/util/`.
-- `agent run` must support supervisor mode and single-task mode, but supervisor mode must remain sequential in MVP.
+- `rg run` must support supervisor mode and single-task mode, but supervisor mode must remain sequential in MVP.
 - CLI output should be scannable and non-interactive by default so commands are safe in automated environments.
 - Avoid adding a web UI, HTTP API, server process, database, cache, event bus, or concurrent worker framework for MVP.
 
