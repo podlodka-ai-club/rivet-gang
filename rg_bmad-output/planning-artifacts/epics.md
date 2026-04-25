@@ -1,7 +1,13 @@
 ---
 stepsCompleted:
   - 'step-01-validate-prerequisites'
+  - 'step-01-requirements-confirmed'
   - 'step-02-design-epics'
+  - 'step-02-epics-approved'
+  - 'step-03-create-stories'
+  - 'step-04-final-validation'
+status: 'complete'
+completedAt: '2026-04-25'
 inputDocuments:
   - '/Users/aifedorov/rivet-gang/PRD.md'
   - '/Users/aifedorov/rivet-gang/ARCHITECTURE.md'
@@ -76,6 +82,8 @@ NFR-008: At least 50 percent of failed-check tasks shall converge within the con
 ### Additional Requirements
 
 - The full architecture record specifies `oclif` as the CLI starter; implementation should establish the TypeScript, Node.js, and `oclif` CLI foundation directly.
+- The first implementation slice must set up Linear as the MVP task tracker integration for checking eligible issues, updating issue status, and adding task comments.
+- Linear task intake must select eligible work from Linear issues carrying the `ai-agent` label.
 - The system must remain a local-first, single-process TypeScript CLI with filesystem-backed state under `.ai-agent/`.
 - CLI commands must stay thin: parse CLI input, load config, call orchestration services, and map workflow status to exit behavior.
 - Workflow logic must live in `core`, including orchestration, decision gate behavior, clarification logic, branch management, repair loop, resume logic, and self-review.
@@ -196,14 +204,476 @@ Reviewers and operators get draft or review-ready PRs/MRs, self-review artifacts
 
 Operators can initialize the project, configure runtime basics, verify local readiness, and ensure repository instructions are loaded before any task execution begins.
 
+Linear epic: RIV-5
+
+### Story 1.1: Bootstrap CLI and Linear Tracker Integration
+
+As an operator, I want the CLI project foundation and Linear tracker integration configured first so the agent can verify Linear access, inspect eligible issues, update issue statuses, and post comments before any automated task execution is attempted.
+
+**FRs covered:** FR-001, FR-002, FR-005, FR-006, FR-008
+
+**Dependencies:** None. This is the first implementation story.
+
+**Scope:**
+
+- Initialize the TypeScript `oclif` CLI foundation with `agent init`, `agent doctor`, and `agent run` command entrypoints.
+- Add configuration fields for the MVP Linear tracker provider, including status names, required Linear auth environment variable names, and default eligibility label `ai-agent`.
+- Define a tracker adapter interface in the adapter boundary for issue lookup, eligibility filtering, status updates, and comment creation.
+- Implement the initial Linear adapter behind that interface.
+- Make `agent doctor` verify Linear configuration and authentication without exposing secret values.
+- Ensure repository instructions from `AGENTS.md` are read before planning or task execution.
+- Add safe, deterministic comment marker handling for agent-created Linear comments.
+
+**Out of Scope:**
+
+- Git branch creation and PR/MR creation.
+- LLM planning or code modification.
+- Validation runner and repair loop.
+- Multi-tracker support beyond the adapter boundary.
+
+**Acceptance Criteria:**
+
+1. Given a fresh repository, when an operator runs `agent init`, then the CLI creates the expected `.ai-agent/` runtime folders and a configuration template that includes Linear tracker settings.
+2. Given missing Linear authentication configuration, when an operator runs `agent doctor`, then the command reports Linear authentication as failed without printing secret values.
+3. Given valid Linear authentication configuration, when an operator runs `agent doctor`, then the command verifies Linear access and reports the tracker check as passed.
+4. Given configured Linear statuses and the `ai-agent` eligibility label, when the tracker adapter checks issues, then it returns only Linear issues matching the configured automation rules and carrying the `ai-agent` label.
+5. Given a target Linear issue and a configured status, when the tracker adapter updates status, then the issue is moved through the adapter interface without provider-specific payloads leaking into core logic.
+6. Given a target Linear issue and comment body, when the tracker adapter adds a comment, then it writes one agent-marked comment suitable for later deduplication.
+7. Given any Linear API or authentication failure, when the CLI reports the result, then it normalizes the failure into a typed integration error that can be surfaced by `agent doctor` or later workflow code.
+8. Given repository instructions exist in `AGENTS.md`, when the CLI prepares for task analysis, then those instructions are loaded before planning or code changes.
+
+**Validation Notes:**
+
+- Add focused tests for Linear adapter normalization using fixtures, without requiring live Linear calls.
+- Add command tests for `agent init` and `agent doctor` behavior around missing and present Linear configuration.
+- Verify no Linear token or secret value is written to logs, stdout, stderr, artifacts, or test snapshots.
+
+### Story 1.2: Runtime Configuration and Repository Instructions
+
+As an operator,
+I want project configuration and repository instructions loaded deterministically,
+So that every run uses the same local rules, credentials references, and safety defaults.
+
+**FRs covered:** FR-001, FR-002, FR-006
+
+**Dependencies:** Story 1.1
+
+**Acceptance Criteria:**
+
+**Given** a repository with `AGENTS.md`
+**When** the CLI loads runtime configuration
+**Then** it reads `AGENTS.md` before any planning or code-change workflow can proceed
+**And** it records whether repository instructions were loaded successfully.
+
+**Given** no `.ai-agent/config.yaml` exists
+**When** an operator runs `agent init`
+**Then** the command creates `.ai-agent/config.yaml` from a template
+**And** the template includes tracker, VCS, LLM, validation, secret-scan, branch prefix, status, eligibility label, kill-switch, and limit settings.
+
+**Given** configuration references credentials
+**When** config validation runs
+**Then** only environment variable names are read from config
+**And** secret values are not persisted to JSON, Markdown, logs, stdout, or stderr.
+
+**Given** required runtime directories are missing
+**When** an operator runs `agent init`
+**Then** the command creates `.ai-agent/state/`, `.ai-agent/tasks/`, `.ai-agent/logs/`, and `.ai-agent/locks/`
+**And** the command can be rerun without deleting existing runtime state.
+
+### Story 1.3: Readiness Doctor for Local Execution
+
+As an operator,
+I want `agent doctor` to report local execution readiness,
+So that integration, repository, and command problems are visible before task automation starts.
+
+**FRs covered:** FR-002
+
+**Dependencies:** Story 1.2
+
+**Acceptance Criteria:**
+
+**Given** a configured repository
+**When** an operator runs `agent doctor`
+**Then** the command reports pass or fail for repository access, Linear authentication, VCS configuration, LLM configuration, and configured local commands.
+
+**Given** one readiness check fails
+**When** `agent doctor` completes
+**Then** the command exits with a non-zero status
+**And** its terminal output identifies the failing check without requiring raw provider logs.
+
+**Given** all readiness checks pass
+**When** `agent doctor` completes
+**Then** the command exits successfully
+**And** the output is scannable in a terminal with one result per check.
+
+**Given** a configured command is not allowlisted
+**When** `agent doctor` evaluates configured commands
+**Then** it reports the command as unsafe or unavailable
+**And** it does not execute task text as shell input.
+
 ## Epic 2: Task Intake, Decisioning, and Agent Prompts
 
 Operators can run the agent, process only eligible tasks, enforce sequential MVP execution, handle clarification, stop new work with a kill switch, and rely on prompts that guide safe analysis and decision outcomes.
+
+Linear epic: RIV-6
+
+### Story 2.1: Run Modes and Sequential Supervisor
+
+As an operator,
+I want `agent run` to support single-task and supervisor modes,
+So that I can run one selected Linear issue or let the agent process eligible work sequentially.
+
+**FRs covered:** FR-003, FR-004
+
+**Dependencies:** Epic 1
+
+**Acceptance Criteria:**
+
+**Given** an operator provides a specific task identifier
+**When** `agent run` starts in single-task mode
+**Then** it attempts to process only that Linear issue
+**And** it does not poll for additional work.
+
+**Given** an operator starts supervisor mode
+**When** eligible Linear issues exist
+**Then** the agent selects at most one issue for processing
+**And** it does not start concurrent workers.
+
+**Given** supervisor mode is already processing a task
+**When** another eligible Linear issue appears
+**Then** the agent leaves the new issue untouched until the current task reaches a terminal or waiting state.
+
+### Story 2.2: Linear Eligible Task Selection
+
+As an operator,
+I want the agent to pick only Linear issues that match configured automation rules,
+So that unsupported or unapproved work is never processed accidentally.
+
+**FRs covered:** FR-005
+
+**Dependencies:** Story 2.1
+
+**Acceptance Criteria:**
+
+**Given** Linear issues exist with different labels
+**When** the agent searches for work
+**Then** it considers only issues carrying the configured `ai-agent` eligibility label.
+
+**Given** Linear issues exist with the `ai-agent` label in multiple statuses
+**When** the agent searches for work
+**Then** it selects only issues in the configured eligible status.
+
+**Given** no Linear issue matches both the configured status and `ai-agent` label
+**When** `agent run` executes
+**Then** it reports that no eligible task was found
+**And** it does not update issue status or add comments.
+
+**Given** an issue is selected
+**When** task intake begins
+**Then** the selected issue identifier, title, labels, status, and updated timestamp are recorded in machine-readable task state.
+
+### Story 2.3: Analysis State and Decision Gate
+
+As an operator,
+I want the agent to analyze a selected issue and produce a typed decision,
+So that every task either proceeds safely or stops with a clear reason.
+
+**FRs covered:** FR-003, FR-018
+
+**Dependencies:** Story 2.2
+
+**Acceptance Criteria:**
+
+**Given** a selected Linear issue
+**When** analysis starts
+**Then** the agent moves the issue to the configured analysis status
+**And** creates initial `research.md`, `plan.md`, and `progress.json` artifacts.
+
+**Given** task details are clear and scope is small
+**When** the decision gate runs
+**Then** it returns `proceed`
+**And** the decision is recorded in `progress.json`.
+
+**Given** scope, expected behavior, edge cases, or tests are unclear
+**When** the decision gate runs
+**Then** it returns `needsClarification`
+**And** it includes 1-3 concrete questions.
+
+**Given** task scope exceeds the small-diff rubric
+**When** the decision gate runs
+**Then** it returns `refuseTooLarge`
+**And** no code-editing workflow starts.
+
+**Given** forbidden paths, high-risk areas, secrets, privileged credentials, or disallowed command patterns are required
+**When** the decision gate runs
+**Then** it returns `refuseUnsafe`
+**And** no code-editing workflow starts.
+
+**Given** the kill switch is enabled
+**When** `agent run` starts
+**Then** the agent stops before new task pickup or automatic resume
+**And** reports the kill-switch state.
+
+### Story 2.4: Clarification Comment Flow
+
+As a task owner,
+I want unclear Linear issues to receive concise clarification questions,
+So that I can unblock the agent without reading raw logs.
+
+**FRs covered:** FR-008
+
+**Dependencies:** Story 2.3
+
+**Acceptance Criteria:**
+
+**Given** the decision gate returns `needsClarification`
+**When** the agent comments on the Linear issue
+**Then** it posts 1-3 concrete questions in one comment
+**And** the comment includes a stable agent marker for deduplication.
+
+**Given** clarification questions were posted
+**When** the flow completes
+**Then** the Linear issue is returned to the configured `To Do` status
+**And** `progress.json` records the clarification round and comment marker.
+
+**Given** the same clarification state is resumed
+**When** the agent runs again before the issue is updated
+**Then** it does not post a duplicate clarification comment.
+
+**Given** the configured clarification-round limit is exceeded
+**When** clarification would be requested again
+**Then** the task is moved to the configured blocked status
+**And** the reason is recorded in artifacts.
 
 ## Epic 3: Safe Execution and Validation
 
 The agent can create or reuse task branches, enforce command and secret-safety boundaries, run validation and secret scans, and perform bounded repair attempts.
 
+Linear epic: RIV-7
+
+### Story 3.1: Deterministic Task Branch Preparation
+
+As an operator,
+I want each task to use a deterministic branch,
+So that repeated runs do not create duplicate branches and reviewers can connect work to the source issue.
+
+**FRs covered:** FR-007
+
+**Dependencies:** Epic 2
+
+**Acceptance Criteria:**
+
+**Given** a selected Linear issue
+**When** branch preparation runs
+**Then** the agent derives a branch name using `<branch_prefix>/<task-id>-<slug>`
+**And** records the branch mapping before creating or switching branches.
+
+**Given** the task branch already exists
+**When** branch preparation runs again
+**Then** the agent reuses the existing branch
+**And** does not create a duplicate branch.
+
+**Given** branch preparation fails
+**When** the failure is recorded
+**Then** the workflow returns `blocked`
+**And** the Linear issue is not moved to review.
+
+### Story 3.2: Command, Path, and Secret Safety Guards
+
+As a reviewer,
+I want the agent to enforce command, path, and secret boundaries before edits,
+So that unsafe or unrelated changes are blocked before they reach a PR/MR.
+
+**FRs covered:** FR-016, FR-017
+
+**Dependencies:** Story 3.1
+
+**Acceptance Criteria:**
+
+**Given** a task plan includes commands
+**When** policy validation runs
+**Then** only configured allowlisted commands can execute
+**And** task text is never executed as shell input.
+
+**Given** a planned change touches forbidden paths
+**When** policy validation runs
+**Then** the workflow returns `refuseUnsafe`
+**And** no file edits are applied.
+
+**Given** credentials are required for integrations
+**When** the agent loads credentials
+**Then** it reads only explicitly configured environment variables
+**And** it never reads arbitrary secret files.
+
+**Given** logs or artifacts are written
+**When** secret values are present in the environment
+**Then** secret values are not written to logs, Markdown artifacts, JSON state, stdout, stderr, or LLM prompts.
+
+### Story 3.3: Validation and Secret Scan Recording
+
+As an operator,
+I want validation and secret-scan results recorded for every implementation attempt,
+So that reviewers can evaluate the change without reconstructing provider logs.
+
+**FRs covered:** FR-009, FR-010
+
+**Dependencies:** Story 3.2
+
+**Acceptance Criteria:**
+
+**Given** configured `test`, `lint`, and `build/typecheck` commands
+**When** validation runs
+**Then** the agent executes only allowlisted configured commands
+**And** records command name, start time, end time, exit code, and pass/fail result in task artifacts.
+
+**Given** a configured secret-scan command
+**When** PR/MR creation is being considered
+**Then** the agent runs the secret scan first
+**And** records the result in `test.md` or equivalent validation artifacts.
+
+**Given** a validation command fails
+**When** results are recorded
+**Then** the artifact includes the failed command and compact error context
+**And** no secret values are included.
+
+### Story 3.4: Bounded Repair Attempts
+
+As an operator,
+I want failed checks to be repaired only within configured limits,
+So that automation remains controlled and auditable.
+
+**FRs covered:** FR-011
+
+**Dependencies:** Story 3.3
+
+**Acceptance Criteria:**
+
+**Given** validation fails after an implementation attempt
+**When** repair is allowed
+**Then** the agent may perform another scoped repair attempt
+**And** increments the repair-attempt count in `progress.json`.
+
+**Given** the repair-attempt limit is reached
+**When** validation still fails
+**Then** automatic repair stops
+**And** unresolved failures are recorded for draft PR/MR handling.
+
+**Given** a repair attempt changes files outside the plan
+**When** self-review or policy validation detects the mismatch
+**Then** the workflow records the mismatch
+**And** blocks or downgrades handoff according to policy.
+
 ## Epic 4: PR/MR Handoff, Resume, and Review Artifacts
 
 Reviewers and operators get draft or review-ready PRs/MRs, self-review artifacts, duplicate-safe resume behavior, and complete run context from artifacts alone.
+
+Linear epic: RIV-8
+
+### Story 4.1: Complete Task Artifact Store
+
+As a reviewer,
+I want every completed or blocked run to leave complete artifacts,
+So that I can understand the task, decision, validation, and risks without raw logs.
+
+**FRs covered:** FR-019
+
+**Dependencies:** Epic 3
+
+**Acceptance Criteria:**
+
+**Given** a task reaches a completed or blocked terminal state
+**When** artifact validation runs
+**Then** the task folder contains `research.md`, `plan.md`, `progress.json`, `implementation.log`, `test.md`, and `self-review.md`.
+
+**Given** `progress.json` is written
+**When** an operator reads it
+**Then** it includes current stage, stage transition timestamps, decision result, repair-attempt count, branch, PR/MR link if present, total execution time, and last error.
+
+**Given** an integration or validation failure occurs
+**When** artifacts are written
+**Then** the failing integration, command, repository condition, or policy rule is identifiable from artifacts alone.
+
+### Story 4.2: Self-Review Before Handoff
+
+As a reviewer,
+I want a self-review artifact for every PR/MR candidate,
+So that known risks, gaps, and scope mismatches are explicit before review.
+
+**FRs covered:** FR-013
+
+**Dependencies:** Story 4.1
+
+**Acceptance Criteria:**
+
+**Given** an implementation is ready for handoff
+**When** self-review runs
+**Then** it records diff-vs-plan mismatches, forbidden-path scan results, test gaps, declared risks, and reviewer focus.
+
+**Given** self-review finds unrelated file changes
+**When** the artifact is written
+**Then** it classifies the changed files
+**And** identifies whether the changes are within the planned module plus directly related tests or docs.
+
+**Given** required validation is incomplete
+**When** self-review completes
+**Then** it records the gap
+**And** marks the handoff as draft-only.
+
+### Story 4.3: Draft or Review-Ready PR/MR Creation
+
+As a task owner,
+I want the agent to create the appropriate PR/MR handoff,
+So that reviewers receive either a review-ready change or a draft with explicit failures.
+
+**FRs covered:** FR-012
+
+**Dependencies:** Story 4.2
+
+**Acceptance Criteria:**
+
+**Given** all required validation and secret-scan checks pass
+**When** PR/MR creation runs
+**Then** the agent creates a review-ready PR/MR
+**And** records the PR/MR link in `progress.json`.
+
+**Given** required validation is incomplete or unresolved failures remain after the repair limit
+**When** PR/MR creation runs
+**Then** the agent creates a draft PR/MR
+**And** includes explicit failing or incomplete checks in the PR/MR description.
+
+**Given** PR/MR creation succeeds
+**When** the Linear issue is updated
+**Then** the issue is moved to the configured review status
+**And** the PR/MR link is available from task artifacts.
+
+### Story 4.4: Duplicate-Safe Resume and Handoff Idempotency
+
+As an operator,
+I want interrupted runs to resume without duplicate side effects,
+So that restarts do not create duplicate comments, branches, or PRs/MRs.
+
+**FRs covered:** FR-014, FR-015
+
+**Dependencies:** Story 4.3
+
+**Acceptance Criteria:**
+
+**Given** a run is interrupted after creating a branch
+**When** the agent resumes
+**Then** it reuses the existing branch from persisted state
+**And** does not create a duplicate branch.
+
+**Given** a clarification comment was already posted
+**When** the agent resumes the same clarification state
+**Then** it detects the stable comment marker
+**And** does not post a duplicate comment.
+
+**Given** an open PR/MR already exists for the task branch
+**When** PR/MR handoff resumes
+**Then** the agent reuses the existing open PR/MR
+**And** does not create a duplicate PR/MR.
+
+**Given** resume state is missing or inconsistent
+**When** the agent cannot prove the next side effect is safe
+**Then** it returns `blocked`
+**And** records the reason in artifacts.
