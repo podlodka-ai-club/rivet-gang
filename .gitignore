@@ -1,3 +1,6 @@
 .agents/
 .claude/
 _bmad/
+node_modules/
+dist/
+.ai-agent/
