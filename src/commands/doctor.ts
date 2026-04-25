@@ -5,6 +5,7 @@ import {OpenAiCompatibleLlmAdapter, type LlmFetchLike} from "../adapters/llm-ada
 import {loadRuntimeConfigValidation} from "../config/config.js";
 import {readEnv} from "../config/env.js";
 import {checkCommandReadiness} from "../policy/command-readiness.js";
+import {checkVcsReadiness} from "../policy/vcs-readiness.js";
 import {loadRepositoryInstructions} from "../state/repository-instructions.js";
 
 export type DoctorCheck = {
@@ -52,14 +53,11 @@ export async function runDoctorCommand(
       : `${configResult.issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}. Fix: edit .ai-agent/config.yaml and rerun rg doctor.`
   });
 
+  const vcsReadiness = await checkVcsReadiness(cwd, config.vcs);
   checks.push({
     name: "vcs configuration",
-    status: config.vcs.provider === "github" && config.vcs.defaultBranch.trim() !== "" && config.vcs.branchPrefix.trim() !== ""
-      ? "pass"
-      : "fail",
-    message: config.vcs.provider === "github" && config.vcs.defaultBranch.trim() !== "" && config.vcs.branchPrefix.trim() !== ""
-      ? `github configured for ${config.vcs.defaultBranch}`
-      : "github provider, default branch, and branch prefix are required. Fix: set vcs.provider, vcs.defaultBranch, and vcs.branchPrefix in .ai-agent/config.yaml."
+    status: vcsReadiness.status,
+    message: vcsReadiness.message
   });
 
   const linearToken = readEnv(env, config.tracker.authEnv);

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import {access, mkdtemp, writeFile} from "node:fs/promises";
+import {access, mkdir, mkdtemp, writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {test} from "node:test";
@@ -13,6 +13,7 @@ test("rg doctor reports missing Linear authentication without leaking secret val
   await runInitCommand(cwd);
 
   await writeConfig(cwd, completeConfig());
+  await writeGitMetadata(cwd);
 
   const result = await runDoctorCommand(cwd, { GR_LINEAR_API_KEY: "", GR_LLM_API_KEY: "" });
   const output = formatDoctorResult(result);
@@ -31,6 +32,7 @@ test("rg doctor reports all readiness checks and verifies configured APIs", asyn
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
   await runInitCommand(cwd);
   await writeConfig(cwd, completeConfig());
+  await writeGitMetadata(cwd);
 
   const seenLinearHeaders = [];
   const linearFetchFn = async (_url, init) => {
@@ -85,6 +87,7 @@ test("rg doctor explains how to fix missing LLM and command configuration", asyn
   const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-fix-guidance-"));
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
   await runInitCommand(cwd);
+  await writeGitMetadata(cwd);
 
   const result = await runDoctorCommand(
     cwd,
@@ -108,6 +111,7 @@ test("rg doctor reports unsafe commands without executing them", async () => {
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
   await runInitCommand(cwd);
   await writeConfig(cwd, completeConfig({testCommand: `${process.execPath} --version; touch ${sentinel}`}));
+  await writeGitMetadata(cwd);
 
   const result = await runDoctorCommand(
     cwd,
@@ -129,6 +133,7 @@ test("rg doctor reports unavailable command binaries", async () => {
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
   await runInitCommand(cwd);
   await writeConfig(cwd, completeConfig({lintCommand: "definitely-not-rg-command"}));
+  await writeGitMetadata(cwd);
 
   const result = await runDoctorCommand(
     cwd,
@@ -149,6 +154,7 @@ test("rg doctor normalizes LLM API failures without leaking secrets", async () =
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
   await runInitCommand(cwd);
   await writeConfig(cwd, completeConfig());
+  await writeGitMetadata(cwd);
 
   const result = await runDoctorCommand(
     cwd,
@@ -171,6 +177,101 @@ test("rg doctor normalizes LLM API failures without leaking secrets", async () =
   assert.doesNotMatch(output, /llm-secret-token/);
 });
 
+test("rg doctor fails VCS readiness when repository metadata is missing", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-no-git-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+  await writeConfig(cwd, completeConfig());
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", GR_LLM_API_KEY: "llm-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch, llmFetchFn: passingLlmFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.exitCode, 1);
+  assert.match(output, /FAIL vcs configuration/);
+  assert.match(output, /git repository metadata is not available/);
+});
+
+test("rg doctor fails VCS readiness when the configured default branch is unavailable", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-missing-branch-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+  await writeConfig(cwd, completeConfig());
+  await writeGitMetadata(cwd, "develop");
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", GR_LLM_API_KEY: "llm-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch, llmFetchFn: passingLlmFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "fail");
+  assert.equal(result.exitCode, 1);
+  assert.match(output, /FAIL vcs configuration/);
+  assert.match(output, /default branch main is not available/);
+});
+
+test("rg doctor resolves default branch refs from linked worktree common dirs", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-worktree-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+  await writeConfig(cwd, completeConfig());
+  await writeLinkedWorktreeMetadata(cwd);
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", GR_LLM_API_KEY: "llm-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch, llmFetchFn: passingLlmFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "pass");
+  assert.match(output, /PASS vcs configuration/);
+});
+
+test("rg doctor rejects corrupt or directory default branch refs", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-corrupt-ref-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+  await writeConfig(cwd, completeConfig());
+  await writeGitMetadata(cwd, "main", {asDirectory: true});
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", GR_LLM_API_KEY: "llm-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch, llmFetchFn: passingLlmFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "fail");
+  assert.match(output, /FAIL vcs configuration/);
+  assert.match(output, /default branch main is not available/);
+});
+
+test("rg doctor rejects invalid VCS branch prefixes", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-invalid-prefix-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+  await writeConfig(cwd, completeConfig().replace("  branchPrefix: ai-agent", "  branchPrefix: bad prefix"));
+  await writeGitMetadata(cwd);
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", GR_LLM_API_KEY: "llm-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch, llmFetchFn: passingLlmFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "fail");
+  assert.match(output, /FAIL vcs configuration/);
+  assert.match(output, /branch prefix bad prefix is not a valid ref prefix/);
+});
+
 function completeConfig(overrides = {}) {
   const command = process.execPath;
   return defaultConfigYaml
@@ -183,6 +284,28 @@ function completeConfig(overrides = {}) {
 
 async function writeConfig(cwd, text) {
   await writeFile(join(cwd, ".ai-agent", "config.yaml"), text);
+}
+
+async function writeGitMetadata(cwd, defaultBranch = "main", options = {}) {
+  const refDir = join(cwd, ".git", "refs", "remotes", "origin");
+  await mkdir(refDir, {recursive: true});
+  await writeFile(join(cwd, ".git", "HEAD"), "ref: refs/heads/story\n");
+  if (options.asDirectory === true) {
+    await mkdir(join(refDir, defaultBranch), {recursive: true});
+  } else {
+    await writeFile(join(refDir, defaultBranch), "1111111111111111111111111111111111111111\n");
+  }
+}
+
+async function writeLinkedWorktreeMetadata(cwd) {
+  const worktreeGitDir = join(cwd, ".git-worktree");
+  const commonGitDir = join(cwd, ".git-common");
+  await mkdir(join(worktreeGitDir, "refs", "remotes", "origin"), {recursive: true});
+  await mkdir(join(commonGitDir, "refs", "remotes", "origin"), {recursive: true});
+  await writeFile(join(cwd, ".git"), `gitdir: ${worktreeGitDir}\n`);
+  await writeFile(join(worktreeGitDir, "HEAD"), "ref: refs/heads/story\n");
+  await writeFile(join(worktreeGitDir, "commondir"), "../.git-common\n");
+  await writeFile(join(commonGitDir, "refs", "remotes", "origin", "main"), "1111111111111111111111111111111111111111\n");
 }
 
 async function passingLinearFetch() {

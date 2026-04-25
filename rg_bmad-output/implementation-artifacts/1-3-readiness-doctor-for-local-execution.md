@@ -1,6 +1,6 @@
 # Story 1.3: Readiness Doctor for Local Execution
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -52,7 +52,11 @@ so that integration, repository, and command problems are visible before task au
 
 ### Review Findings
 
-- [ ] [Review][Patch] Verify local git/default branch readiness instead of passing VCS from config strings only [src/commands/doctor.ts:53]
+- [x] [Review][Patch] Verify local git/default branch readiness instead of passing VCS from config strings only [src/commands/doctor.ts:53]
+- [x] [Review][Patch] Support linked Git worktree common refs when checking default branch readiness [src/policy/vcs-readiness.ts:82]
+- [x] [Review][Patch] Validate branch refs as usable files instead of accepting any existing path [src/policy/vcs-readiness.ts:82]
+- [x] [Review][Patch] Handle unreadable `.git` files as readiness failures instead of throwing [src/policy/vcs-readiness.ts:73]
+- [x] [Review][Patch] Validate configured branch names and prefixes with Git-compatible ref rules [src/policy/vcs-readiness.ts:22]
 
 ## Dev Notes
 
@@ -179,6 +183,18 @@ GPT-5
 - `/Applications/Codex.app/Contents/Resources/node /Users/aifedorov/.npm/_npx/bbdf4739ce68c653/node_modules/npm/bin/npm-cli.js run build`
 - `/Applications/Codex.app/Contents/Resources/node /Users/aifedorov/.npm/_npx/bbdf4739ce68c653/node_modules/npm/bin/npm-cli.js run typecheck`
 - `/Applications/Codex.app/Contents/Resources/node /Users/aifedorov/.npm/_npx/bbdf4739ce68c653/node_modules/npm/bin/npm-cli.js test`
+- `npm test` (red phase: VCS readiness tests failed before implementation)
+- `npm test`
+- `npm run build`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run secretScan`
+- `npm test` (red phase: review follow-up tests failed before VCS readiness hardening)
+- `npm test`
+- `npm run build`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run secretScan`
 
 ### Implementation Plan
 
@@ -201,6 +217,10 @@ GPT-5
 - Added `llm.baseUrl` URL validation so shell commands or native generation endpoints are reported as config errors before API checks run; build, typecheck, and full test suite pass with 25 tests.
 - Added repo-level `lint` and `secretScan` scripts so all validation readiness checks can be configured; `rg doctor` now passes test/lint/typecheck/secretScan command readiness locally.
 - Changed validation command readiness from blocking failures to optional warnings; build, typecheck, and full test suite pass with 25 tests.
+- Resolved review finding: `rg doctor` now verifies local Git metadata and the configured default branch ref before passing VCS readiness.
+- Added VCS readiness regression tests for missing repository metadata and unavailable configured default branch; build, typecheck, lint, secret scan, and full test suite pass with 27 tests.
+- Resolved code review follow-ups: linked worktree common refs are supported, branch refs must be usable files or packed refs with non-zero object IDs, unreadable `.git` files fail gracefully, and default branch plus branch prefix names use stricter Git ref validation.
+- Added VCS readiness regression tests for linked worktrees, directory/corrupt refs, and invalid branch prefixes; build, typecheck, lint, secret scan, and full test suite pass with 30 tests.
 
 ### File List
 
@@ -209,6 +229,7 @@ GPT-5
 - src/config/config.ts
 - src/config/defaults.ts
 - src/policy/command-readiness.ts
+- src/policy/vcs-readiness.ts
 - src/types/errors.ts
 - scripts/secret-scan.mjs
 - package.json
@@ -227,3 +248,5 @@ GPT-5
 - 2026-04-25: Added validation for malformed `llm.baseUrl` values.
 - 2026-04-25: Added local lint and secret-scan validation commands.
 - 2026-04-25: Made validation command readiness advisory warnings instead of blocking failures.
+- 2026-04-25: Addressed code review finding by validating local Git metadata and default branch readiness in `rg doctor`.
+- 2026-04-25: Addressed second code review findings by hardening VCS readiness for linked worktrees, corrupt refs, unreadable `.git` files, and invalid ref names.
