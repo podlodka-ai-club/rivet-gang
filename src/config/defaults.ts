@@ -1,6 +1,6 @@
 export const defaultConfigYaml = `tracker:
   provider: linear
-  authEnv: LINEAR_API_KEY
+  authEnv: GR_LINEAR_API_KEY
   team: null
   eligibleStatuses:
     - To Do
@@ -16,6 +16,8 @@ vcs:
 llm:
   provider: null
   model: null
+  authEnv: GR_LLM_API_KEY
+  baseUrl: null
 validation:
   test: null
   lint: null
@@ -32,7 +34,7 @@ killSwitch:
 export const defaultRuntimeConfig = {
   tracker: {
     provider: "linear",
-    authEnv: "LINEAR_API_KEY",
+    authEnv: "GR_LINEAR_API_KEY",
     team: null,
     eligibleStatuses: ["To Do"],
     inAnalysisStatus: "In Analysis",
@@ -48,7 +50,9 @@ export const defaultRuntimeConfig = {
   },
   llm: {
     provider: null,
-    model: null
+    model: null,
+    authEnv: "GR_LLM_API_KEY",
+    baseUrl: null
   },
   validation: {
     test: null,

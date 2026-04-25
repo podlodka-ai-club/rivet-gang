@@ -22,6 +22,8 @@ export type RuntimeConfig = {
   llm: {
     provider: string | null;
     model: string | null;
+    authEnv: string;
+    baseUrl: string | null;
   };
   validation: {
     test: string | null;
@@ -96,7 +98,9 @@ export function parseRuntimeConfig(text: string): RuntimeConfig {
     },
     llm: {
       provider: getNullableScalar(sections, "llm", "provider", defaults.llm.provider),
-      model: getNullableScalar(sections, "llm", "model", defaults.llm.model)
+      model: getNullableScalar(sections, "llm", "model", defaults.llm.model),
+      authEnv: getScalar(sections, "llm", "authEnv", defaults.llm.authEnv),
+      baseUrl: getNullableScalar(sections, "llm", "baseUrl", defaults.llm.baseUrl)
     },
     validation: {
       test: getNullableScalar(sections, "validation", "test", defaults.validation.test),
@@ -138,6 +142,27 @@ export function validateRuntimeConfig(config: RuntimeConfig): ConfigValidationRe
 
   if (config.vcs.provider !== "github") {
     issues.push({ path: "vcs.provider", message: "Only the github VCS provider is configured in MVP defaults" });
+  }
+
+  const llmPartiallyConfigured = config.llm.provider !== null || config.llm.model !== null || config.llm.baseUrl !== null;
+  if (llmPartiallyConfigured && config.llm.provider === null) {
+    issues.push({ path: "llm.provider", message: "LLM provider is required when LLM readiness is configured" });
+  }
+
+  if (llmPartiallyConfigured && config.llm.model === null) {
+    issues.push({ path: "llm.model", message: "LLM model is required when LLM readiness is configured" });
+  }
+
+  if (llmPartiallyConfigured && config.llm.baseUrl === null) {
+    issues.push({ path: "llm.baseUrl", message: "LLM API base URL is required when LLM readiness is configured" });
+  }
+
+  if (config.llm.baseUrl !== null && !isHttpUrl(config.llm.baseUrl)) {
+    issues.push({ path: "llm.baseUrl", message: "LLM API base URL must be an http(s) URL, not a shell command or API method path" });
+  }
+
+  if (llmPartiallyConfigured && config.llm.authEnv.trim() === "") {
+    issues.push({ path: "llm.authEnv", message: "LLM auth environment variable name is required when LLM is configured" });
   }
 
   if (config.tracker.eligibleStatuses.length === 0) {
@@ -292,6 +317,15 @@ function getBoolean(
 function requireValue(issues: ConfigValidationIssue[], path: string, value: string): void {
   if (value.trim() === "") {
     issues.push({ path, message: "Value is required" });
+  }
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 

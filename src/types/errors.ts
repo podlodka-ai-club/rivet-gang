@@ -8,7 +8,7 @@ export type IntegrationErrorCode =
 
 export type IntegrationError = {
   type: "integrationError";
-  provider: "linear";
+  provider: "linear" | "llm";
   code: IntegrationErrorCode;
   message: string;
   statusCode?: number;

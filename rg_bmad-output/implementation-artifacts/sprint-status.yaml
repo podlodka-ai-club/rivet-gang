@@ -1,5 +1,5 @@
 # generated: 2026-04-25T14:35:08+0200
-# last_updated: 2026-04-25T16:51:51+0200
+# last_updated: 2026-04-25T17:29:21+0200
 # project: rivet-gang
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: "2026-04-25T14:35:08+0200"
-last_updated: "2026-04-25T16:51:51+0200"
+last_updated: "2026-04-25T17:29:21+0200"
 project: rivet-gang
 project_key: NOKEY
 tracking_system: file-system
@@ -45,7 +45,7 @@ development_status:
   epic-1: in-progress
   1-1-bootstrap-cli-and-linear-tracker-integration: done
   1-2-runtime-configuration-and-repository-instructions: done
-  1-3-readiness-doctor-for-local-execution: backlog
+  1-3-readiness-doctor-for-local-execution: in-progress
   1-4-linear-agent-task-status-reporting: backlog
   epic-1-retrospective: optional
 

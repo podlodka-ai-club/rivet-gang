@@ -18,7 +18,7 @@ test("rg init creates runtime directories and Linear config template", async () 
 
   const config = await readFile(join(cwd, ".ai-agent", "config.yaml"), "utf8");
   assert.match(config, /provider: linear/);
-  assert.match(config, /authEnv: LINEAR_API_KEY/);
+  assert.match(config, /authEnv: GR_LINEAR_API_KEY/);
   assert.match(config, /eligibilityLabel: ai-agent/);
 });
 
