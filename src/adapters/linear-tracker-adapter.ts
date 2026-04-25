@@ -1,4 +1,5 @@
 import type {
+  TrackerAgentIssueQuery,
   TrackerAdapter,
   TrackerComment,
   TrackerIssueQuery,
@@ -46,6 +47,76 @@ export class LinearTrackerAdapter implements TrackerAdapter {
     }
 
     return { ok: true, value: undefined };
+  }
+
+  async listAgentIssues(query: TrackerAgentIssueQuery): Promise<Result<TrackerIssue[], IntegrationError>> {
+    const issues: TrackerIssue[] = [];
+    let after: string | null = null;
+
+    do {
+      const result: Result<{
+        issues: {
+          nodes: LinearIssueNode[];
+          pageInfo: {
+            hasNextPage: boolean;
+            endCursor: string | null;
+          };
+        };
+      }, IntegrationError> = await this.graphql<{
+        issues: {
+          nodes: LinearIssueNode[];
+          pageInfo: {
+            hasNextPage: boolean;
+            endCursor: string | null;
+          };
+        };
+      }>(
+        `query AgentIssues($first: Int!, $after: String, $labelName: String!) {
+          issues(
+            first: $first,
+            after: $after,
+            orderBy: updatedAt,
+            filter: {
+              labels: { name: { eq: $labelName } }
+            }
+          ) {
+            nodes {
+              id
+              identifier
+              title
+              description
+              url
+              updatedAt
+              state { name }
+              labels { nodes { name } }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }`,
+        { first: 50, after, labelName: query.eligibilityLabel }
+      );
+
+      if (!result.ok) {
+        return result;
+      }
+
+      issues.push(...result.value.issues.nodes.map(normalizeIssue));
+
+      if (result.value.issues.pageInfo.hasNextPage && result.value.issues.pageInfo.endCursor === null) {
+        return integrationError("invalidResponse", "Linear pagination response was missing an end cursor");
+      }
+
+      if (!result.value.issues.pageInfo.hasNextPage) {
+        break;
+      }
+
+      after = result.value.issues.pageInfo.endCursor;
+    } while (after !== null);
+
+    return { ok: true, value: issues };
   }
 
   async listEligibleIssues(query: TrackerIssueQuery): Promise<Result<TrackerIssue[], IntegrationError>> {

@@ -26,9 +26,11 @@ export async function runCli(io: CliIO): Promise<number> {
   }
 
   if (command === "run") {
-    const result = await runRunCommand();
+    const result = await runRunCommand(io.cwd, io.env, {
+      statusOnly: io.argv.includes("--status-only")
+    });
     io.stdout.write(`${result.message}\n`);
-    return 1;
+    return result.exitCode;
   }
 
   io.stderr.write("Usage: rg <init|doctor|run>\n");

@@ -100,6 +100,90 @@ test("Linear adapter adds stable marker to comments", async () => {
   assert.match(requestBody.variables.body, /Question\?/);
 });
 
+test("Linear adapter lists agent-labeled issues across statuses with pagination", async () => {
+  const bodies = [];
+  const adapter = new LinearTrackerAdapter({
+    token: "token",
+    fetchFn: async (_url, init) => {
+      const body = JSON.parse(init.body);
+      bodies.push(body);
+
+      if (!body.variables.after) {
+        return response({
+          data: {
+            issues: {
+              nodes: [
+                issue({id: "1", state: "To Do", labels: ["ai-agent"]}),
+                issue({id: "2", state: "In Progress", labels: ["ai-agent"]})
+              ],
+              pageInfo: {hasNextPage: true, endCursor: "cursor-2"}
+            }
+          }
+        });
+      }
+
+      return response({
+        data: {
+          issues: {
+            nodes: [
+              issue({id: "3", state: "Blocked", labels: ["ai-agent"]})
+            ],
+            pageInfo: {hasNextPage: false, endCursor: null}
+          }
+        }
+      });
+    }
+  });
+
+  const result = await adapter.listAgentIssues({
+    eligibilityLabel: "ai-agent"
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.map((item) => item.providerId), ["1", "2", "3"]);
+  assert.equal(bodies[0].variables.labelName, "ai-agent");
+  assert.equal(bodies[1].variables.after, "cursor-2");
+});
+
+test("Linear adapter normalizes agent-issue query errors", async () => {
+  const adapter = new LinearTrackerAdapter({
+    token: "token",
+    fetchFn: async () => response({
+      errors: [{message: "Bad request"}]
+    })
+  });
+
+  const result = await adapter.listAgentIssues({
+    eligibilityLabel: "ai-agent"
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "graphqlError");
+});
+
+test("Linear adapter rejects inconsistent pagination metadata", async () => {
+  const adapter = new LinearTrackerAdapter({
+    token: "token",
+    fetchFn: async () => response({
+      data: {
+        issues: {
+          nodes: [
+            issue({id: "1", state: "To Do", labels: ["ai-agent"]})
+          ],
+          pageInfo: {hasNextPage: true, endCursor: null}
+        }
+      }
+    })
+  });
+
+  const result = await adapter.listAgentIssues({
+    eligibilityLabel: "ai-agent"
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.code, "invalidResponse");
+});
+
 function response(payload, ok = true, status = 200) {
   return {
     ok,
