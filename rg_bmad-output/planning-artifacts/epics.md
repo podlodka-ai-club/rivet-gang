@@ -295,7 +295,12 @@ So that integration, repository, and command problems are visible before task au
 
 **Given** a configured repository
 **When** an operator runs `rg doctor`
-**Then** the command reports pass or fail for repository access, Linear authentication, VCS configuration, LLM configuration, and configured local commands.
+**Then** the command reports pass or fail for repository access, Linear authentication, VCS configuration, LLM configuration, LLM API authentication/connectivity, and configured local commands.
+
+**Given** LLM provider and model settings are configured
+**When** `rg doctor` evaluates LLM readiness
+**Then** it verifies the configured LLM API can be reached with the configured auth environment variable
+**And** it reports provider, model, and pass/fail status without printing secret values.
 
 **Given** one readiness check fails
 **When** `rg doctor` completes
@@ -311,6 +316,38 @@ So that integration, repository, and command problems are visible before task au
 **When** `rg doctor` evaluates configured commands
 **Then** it reports the command as unsafe or unavailable
 **And** it does not execute task text as shell input.
+
+### Story 1.4: Linear Agent Task Status Reporting
+
+As an operator,
+I want `rg run` to report the current Linear task statuses for agent-owned work,
+So that I can see what the agent can pick up or is already handling before task automation starts.
+
+**FRs covered:** FR-002, FR-003, FR-005
+
+**Dependencies:** Story 1.3
+
+**Acceptance Criteria:**
+
+**Given** Linear authentication and the configured eligibility label are available
+**When** an operator runs the status-only `rg run` mode
+**Then** the command queries Linear for issues carrying the configured agent label
+**And** reports each task with at least issue key, title, current status, and URL when available.
+
+**Given** matching Linear tasks exist across multiple workflow statuses
+**When** `rg run` reports agent task status
+**Then** the output groups or clearly labels tasks by current Linear status
+**And** highlights which tasks match the configured eligible statuses for pickup.
+
+**Given** the operator requests task status only
+**When** `rg run` completes
+**Then** it does not update Linear issue status
+**And** it does not add comments, create branches, modify files, or start LLM planning.
+
+**Given** Linear authentication or API access fails
+**When** `rg run` attempts to report agent task status
+**Then** the command exits with a non-zero status
+**And** reports the failing integration without printing secret values.
 
 ## Epic 2: Task Intake, Decisioning, and Agent Prompts
 
