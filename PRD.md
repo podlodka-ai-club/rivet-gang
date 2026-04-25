@@ -6,8 +6,7 @@ classification:
   domain: 'general'
   projectType: 'cli_tool'
   complexity: 'moderate'
-inputDocuments:
-  - '/Users/aifedorov/rivet-gang/PRD.validation-report.md'
+inputDocuments: []
 stepsCompleted:
   - 'step-e-01-discovery'
   - 'step-e-02-review'
