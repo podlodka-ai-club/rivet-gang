@@ -50,19 +50,20 @@ export class OpenAiCompatibleLlmAdapter implements LlmAdapter {
       return integrationError("httpError", error instanceof Error ? error.message : `${this.provider} request failed`);
     }
 
-    let payload: OpenAiCompatiblePayload;
-    try {
-      payload = await response.json() as OpenAiCompatiblePayload;
-    } catch {
-      return integrationError("invalidResponse", `${this.provider} API returned invalid JSON`, response.status);
-    }
-
     if (!response.ok) {
+      const payload = await readErrorPayload(response);
       return integrationError(
         response.status === 401 || response.status === 403 ? "missingAuth" : "httpError",
         payload.error?.message ?? `${this.provider} API request failed`,
         response.status
       );
+    }
+
+    let payload: OpenAiCompatiblePayload;
+    try {
+      payload = await response.json() as OpenAiCompatiblePayload;
+    } catch {
+      return integrationError("invalidResponse", `${this.provider} API returned invalid JSON`, response.status);
     }
 
     if (typeof payload !== "object" || payload === null || !("id" in payload)) {
@@ -77,6 +78,15 @@ type OpenAiCompatiblePayload = {
   id?: string;
   error?: {message?: string};
 };
+
+async function readErrorPayload(response: Awaited<ReturnType<LlmFetchLike>>): Promise<OpenAiCompatiblePayload> {
+  try {
+    const payload = await response.json();
+    return typeof payload === "object" && payload !== null ? payload as OpenAiCompatiblePayload : {};
+  } catch {
+    return {};
+  }
+}
 
 function integrationError(code: IntegrationError["code"], message: string, statusCode?: number): Result<never, IntegrationError> {
   return {

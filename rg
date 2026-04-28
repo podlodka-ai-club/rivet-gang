@@ -7,8 +7,6 @@ NODE_BIN="${NODE_BIN:-}"
 if [ -z "$NODE_BIN" ]; then
   if command -v node >/dev/null 2>&1; then
     NODE_BIN="$(command -v node)"
-  elif [ -x "/Users/aifedorov/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node" ]; then
-    NODE_BIN="/Users/aifedorov/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node"
   else
     echo "rg: node is required but was not found. Set NODE_BIN=/path/to/node or install Node.js." >&2
     exit 1

@@ -72,3 +72,25 @@ test("OpenAI-compatible LLM adapter normalizes invalid JSON", async () => {
   assert.equal(result.error.provider, "llm");
   assert.equal(result.error.code, "invalidResponse");
 });
+
+test("OpenAI-compatible LLM adapter checks HTTP status before parsing JSON", async () => {
+  const adapter = new OpenAiCompatibleLlmAdapter({
+    provider: "openai-compatible",
+    token: "llm-secret",
+    baseUrl: "https://llm.example/v1",
+    fetchFn: async () => ({
+      ok: false,
+      status: 503,
+      async json() {
+        throw new Error("not json");
+      }
+    })
+  });
+
+  const result = await adapter.verifyModelAccess("gpt-test");
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error.provider, "llm");
+  assert.equal(result.error.code, "httpError");
+  assert.equal(result.error.statusCode, 503);
+});

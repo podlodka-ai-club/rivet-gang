@@ -62,10 +62,11 @@ export async function runDoctorCommand(
 
   const linearToken = readEnv(env, config.tracker.authEnv);
   if (linearToken.status === "missing") {
+    const authEnvName = formatAuthEnvName(config.tracker.authEnv, "Linear");
     checks.push({
       name: "linear authentication",
       status: "fail",
-      message: `Missing required environment variable ${config.tracker.authEnv}. Fix: export ${config.tracker.authEnv}=<linear-api-key> or change tracker.authEnv in .ai-agent/config.yaml.`
+      message: `Missing required environment variable ${authEnvName}. Fix: export ${authEnvName}=<linear-api-key> or change tracker.authEnv in .ai-agent/config.yaml.`
     });
   } else {
     const adapter = new LinearTrackerAdapter({ token: linearToken.value, fetchFn: options.linearFetchFn });
@@ -95,16 +96,17 @@ export async function runDoctorCommand(
   if (llmConfigured) {
     const llmToken = readEnv(env, config.llm.authEnv);
     if (llmToken.status === "missing") {
+      const authEnvName = formatAuthEnvName(config.llm.authEnv, "LLM");
       checks.push({
         name: "llm authentication",
         status: "fail",
-        message: `Missing required environment variable ${config.llm.authEnv}. Fix: export ${config.llm.authEnv}=<llm-api-key> or change llm.authEnv in .ai-agent/config.yaml.`
+        message: `Missing required environment variable ${authEnvName}. Fix: export ${authEnvName}=<llm-api-key> or change llm.authEnv in .ai-agent/config.yaml.`
       });
     } else {
       checks.push({
         name: "llm authentication",
         status: "pass",
-        message: `${config.llm.authEnv} is configured`
+        message: `${formatAuthEnvName(config.llm.authEnv, "LLM")} is configured`
       });
 
       const adapter = new OpenAiCompatibleLlmAdapter({
@@ -181,6 +183,14 @@ async function checkRepositoryAccess(cwd: string): Promise<DoctorCheck> {
 
 function redact(message: string, secrets: string[]): string {
   return secrets.reduce((current, secret) => secret === "" ? current : current.split(secret).join("[redacted]"), message);
+}
+
+function formatAuthEnvName(name: string, provider: "Linear" | "LLM"): string {
+  return isSafeEnvVarName(name) ? name : `<configured ${provider} auth env var>`;
+}
+
+function isSafeEnvVarName(name: string): boolean {
+  return /^[A-Z_][A-Z0-9_]*$/.test(name);
 }
 
 function commandFixMessage(name: string, result: Exclude<Awaited<ReturnType<typeof checkCommandReadiness>>, {status: "pass"}>): string {

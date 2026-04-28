@@ -27,6 +27,28 @@ test("rg doctor reports missing Linear authentication without leaking secret val
   assert.doesNotMatch(output, /super-secret-token/);
 });
 
+test("rg doctor does not echo unsafe configured LLM auth env names", async () => {
+  const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-unsafe-authenv-"));
+  await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
+  await runInitCommand(cwd);
+
+  await writeConfig(cwd, completeConfig().replace("  authEnv: GR_LLM_API_KEY", "  authEnv: sk-leaky-token"));
+  await writeGitMetadata(cwd);
+
+  const result = await runDoctorCommand(
+    cwd,
+    {GR_LINEAR_API_KEY: "super-secret-token", PATH: process.env.PATH},
+    {linearFetchFn: passingLinearFetch}
+  );
+  const output = formatDoctorResult(result);
+
+  assert.equal(result.status, "fail");
+  assert.match(output, /FAIL llm authentication/);
+  assert.match(output, /<configured LLM auth env var>/);
+  assert.doesNotMatch(output, /sk-leaky-token/);
+  assert.doesNotMatch(output, /super-secret-token/);
+});
+
 test("rg doctor reports all readiness checks and verifies configured APIs", async () => {
   const cwd = await mkdtemp(join(tmpdir(), "rg-doctor-pass-"));
   await writeFile(join(cwd, "AGENTS.md"), "# Test Instructions\n");
