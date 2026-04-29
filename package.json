@@ -1,0 +1,32 @@
+{
+  "name": "rivet-gang",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "rg": "./bin/rg.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit",
+    "secretScan": "node scripts/secret-scan.mjs",
+    "test": "tsc && node --test",
+    "test:commands": "node --test test/commands/*.test.mjs",
+    "test:adapters": "node --test test/adapters/*.test.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@oclif/core": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.2",
+    "typescript": "^5.8.0"
+  },
+  "oclif": {
+    "bin": "rg",
+    "commands": "./dist/commands"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

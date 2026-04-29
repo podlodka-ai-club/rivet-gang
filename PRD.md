@@ -148,8 +148,9 @@ This product is a `cli_tool`. The PRD must specify command behavior, scriptable 
 
 ### Command Structure
 
-- the product exposes `agent init`, `agent doctor`, and `agent run` as first-class commands
-- `agent run` supports supervisor mode and single-task mode
+- the CLI app name is `rg`
+- the product exposes `rg init`, `rg doctor`, and `rg run` as first-class commands
+- `rg run` supports supervisor mode and single-task mode
 - supervisor mode is sequential only in MVP and must not start concurrent workers
 
 ### Output Formats
@@ -188,9 +189,9 @@ Built-in defaults cover:
 
 ## Functional Requirements
 
-- FR-001: Operators can initialize a project workspace by running `agent init`, which creates the runtime folders, configuration template, and instruction template required to start a project.
-- FR-002: Operators can verify execution readiness by running `agent doctor`, which checks repository access, integrations, authentication, and required local commands and reports pass or fail for each check.
-- FR-003: Operators can run `agent run` in supervisor mode for sequential task processing or in single-task mode for one specified task.
+- FR-001: Operators can initialize a project workspace by running `rg init`, which creates the runtime folders, configuration template, and instruction template required to start a project.
+- FR-002: Operators can verify execution readiness by running `rg doctor`, which checks repository access, integrations, authentication, and required local commands and reports pass or fail for each check.
+- FR-003: Operators can run `rg run` in supervisor mode for sequential task processing or in single-task mode for one specified task.
 - FR-004: Supervisor mode processes at most one eligible task at a time and does not start concurrent workers.
 - FR-005: The agent selects only tasks whose tracker status and eligibility label match the configured automation rules.
 - FR-006: The agent reads project instructions from `AGENTS.md` before planning or changing code.

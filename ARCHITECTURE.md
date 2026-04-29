@@ -3,7 +3,7 @@
 This document is the implementation-facing architecture summary for the project. It is intentionally shorter than the full BMAD architecture document and is meant to help AI agents and humans make consistent technical decisions.
 
 For the complete decision log, see:
-- [`_bmad-output/planning-artifacts/architecture.md`](./_bmad-output/planning-artifacts/architecture.md)
+- [`rg_bmad-output/planning-artifacts/architecture.md`](./rg_bmad-output/planning-artifacts/architecture.md)
 
 ## System Overview
 
@@ -316,6 +316,6 @@ If true distributed execution is needed later, it should be introduced as a sepa
 ## Source Documents
 
 - Requirements: [`PRD.md`](./PRD.md)
-- Full architecture record: [`_bmad-output/planning-artifacts/architecture.md`](./_bmad-output/planning-artifacts/architecture.md)
+- Full architecture record: [`rg_bmad-output/planning-artifacts/architecture.md`](./rg_bmad-output/planning-artifacts/architecture.md)
 - Agent working contract: [`AGENTS.md`](./AGENTS.md)
 - Shared execution plans: [`docs/exec-plans/`](./docs/exec-plans/)

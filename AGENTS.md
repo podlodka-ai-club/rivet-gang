@@ -9,7 +9,7 @@ This file is intentionally short. Use it as the operating contract, not as the f
 Primary references:
 - requirements: [`PRD.md`](./PRD.md)
 - architecture summary: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-- full decision log: [`_bmad-output/planning-artifacts/architecture.md`](./_bmad-output/planning-artifacts/architecture.md)
+- full decision log: [`rg_bmad-output/planning-artifacts/architecture.md`](./rg_bmad-output/planning-artifacts/architecture.md)
 - shared execution plans: [`docs/exec-plans/`](./docs/exec-plans/)
 
 ## Mission
@@ -198,6 +198,6 @@ If two reasonable implementations exist, choose the one that:
 ## Reference Documents
 
 - Root architecture summary: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
-- Full BMAD architecture record: [`_bmad-output/planning-artifacts/architecture.md`](./_bmad-output/planning-artifacts/architecture.md)
+- Full BMAD architecture record: [`rg_bmad-output/planning-artifacts/architecture.md`](./rg_bmad-output/planning-artifacts/architecture.md)
 - Product requirements: [`PRD.md`](./PRD.md)
 - Shared execution plans: [`docs/exec-plans/`](./docs/exec-plans/)

@@ -1,0 +1,71 @@
+# generated: 2026-04-25T14:35:08+0200
+# last_updated: 2026-04-25T19:38:57+0200
+# project: rivet-gang
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: /Users/aifedorov/rivet-gang/rg_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog -> in-progress: Automatically when first story is created (via create-story)
+#   - in-progress -> done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: "2026-04-25T14:35:08+0200"
+last_updated: "2026-04-25T19:38:57+0200"
+project: rivet-gang
+project_key: NOKEY
+tracking_system: file-system
+story_location: "/Users/aifedorov/rivet-gang/rg_bmad-output/implementation-artifacts"
+
+development_status:
+  epic-1: done
+  1-1-bootstrap-cli-and-linear-tracker-integration: done
+  1-2-runtime-configuration-and-repository-instructions: done
+  1-3-readiness-doctor-for-local-execution: done
+  1-4-linear-agent-task-status-reporting: done
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-run-modes-and-sequential-supervisor: backlog
+  2-2-linear-eligible-task-selection: backlog
+  2-3-analysis-state-and-decision-gate: backlog
+  2-4-clarification-comment-flow: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-deterministic-task-branch-preparation: backlog
+  3-2-command-path-and-secret-safety-guards: backlog
+  3-3-validation-and-secret-scan-recording: backlog
+  3-4-bounded-repair-attempts: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-complete-task-artifact-store: backlog
+  4-2-self-review-before-handoff: backlog
+  4-3-draft-or-review-ready-pr-mr-creation: backlog
+  4-4-duplicate-safe-resume-and-handoff-idempotency: backlog
+  epic-4-retrospective: optional
